@@ -18,7 +18,7 @@ class AddFeatures:
 
 
 def load_clean_dataframe():
-    df = pd.read_csv("ETH.csv")
+    df = pd.read_csv("train/ETH.csv")
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values(by="timestamp").reset_index(drop=True)
     df.interpolate(method="linear", inplace=True)

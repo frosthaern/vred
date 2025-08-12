@@ -136,7 +136,9 @@ def main():
     df = load_clean_dataframe()
     df, features = add_features(df)
     feature_set = set(features)
-    test_featureset(feature_set, df)
+    feature_set.add("mid_price")
+    no_feature_set = set()
+    test_featureset(feature_set.symmetric_difference(no_feature_set), df)
 
 
 if __name__ == "__main__":

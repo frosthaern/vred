@@ -24,21 +24,31 @@ def main():
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values(by="timestamp").reset_index(drop=True)
     df.interpolate(method="linear", inplace=True)
-    print(f"total is nas = {df.isna().sum()}")
 
+    # convert the features into a rolling window features, then you don't need to do that shape while training
     df["spread"] = ((df["ask_price1"] - df["bid_price1"]).abs() / df["mid_price"]).abs()
+    df["spread_rolling"] = df["spread"].rolling(window_size).std()
     df["returns"] = df["mid_price"].pct_change()
-    df["realized_vol_10s"] = df["returns"].rolling(10).std()
-    df["order_imbalance"] = order_book_imbalance(df).rolling(10).mean()
+    df["realized_vol_10s"] = df["returns"].rolling(window_size).std()
+    df["order_imbalance"] = order_book_imbalance(df).rolling(window_size).std()
     df["microprice"] = (
         df["bid_price1"] * df["ask_volume1"] + df["ask_price1"] * df["bid_volume1"]
     ) / (df["bid_volume1"] + df["ask_volume1"])
+    df["microprice_rolling"] = df["microprice"].rolling(window_size).std()
 
-    features = ["spread", "realized_vol_10s", "order_imbalance", "microprice"]
-    x = df[features]
+    df.ffill(inplace=True)
+    df.bfill(inplace=True)
+
+    features = [
+        "spread_rolling",
+        "realized_vol_10s",
+        "order_imbalance",
+        "microprice_rolling",
+    ]
+
     y = df["label"]
     xscaler = sk.preprocessing.StandardScaler()
-    x = xscaler.fit_transform(x)
+    x = xscaler.fit_transform(df[features])
 
     x = window_creation(df, feature=features, window_size=window_size)
 

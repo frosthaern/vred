@@ -41,9 +41,7 @@ def main():
 
     features = [
         "spread_rolling",
-        # "realized_vol_10s",
-        "order_imbalance",
-        # "microprice_rolling",
+        "realized_vol_10s",
     ]
 
     y = df["label"]
@@ -56,11 +54,8 @@ def main():
     yscaler = sk.preprocessing.StandardScaler()
     y_scaled = yscaler.fit_transform(y.values.reshape(-1, 1)).flatten()
 
-    x = window_creation(df, feature=features, window_size=window_size)
-    y_lstm = y_scaled[window_size:]
-
     xtrain, xtest, ytrain, ytest = sk.model_selection.train_test_split(
-        x, y_lstm, test_size=0.2, random_state=42
+        x, y_scaled, test_size=0.2, random_state=42
     )
 
     print(xtrain.shape)
@@ -70,7 +65,7 @@ def main():
 
     # model training
     model = tf.keras.Sequential()
-    model.add(tf.keras.layers.LSTM(50, input_shape=(x.shape[1], x.shape[2])))
+    model.add(tf.keras.layers.LSTM(50, input_shape=(xtrain.shape[1], 1)))
     model.add(tf.keras.layers.Dense(1))
     model.compile(optimizer="adam", loss="mse")
     model.fit(xtrain, ytrain, epochs=10, batch_size=64)
@@ -84,8 +79,51 @@ def main():
     print(f"rmse = {np.sqrt(sk.metrics.mean_squared_error(ytest_original, ypred))}")
     print(f"mae = {sk.metrics.mean_absolute_error(ytest_original, ypred)}")
 
-    print(ypred.shape)
-    print(ytest.shape)
+    df_test = pd.read_csv("test/ETH.csv")
+    df_test["timestamp"] = pd.to_datetime(df_test["timestamp"])
+    df_test = df_test.sort_values(by="timestamp").reset_index(drop=True)
+    df_test.interpolate(method="linear", inplace=True)
+
+    # convert the features into a rolling window features, then you don't need to do that shape while training
+    df_test["spread"] = (df_test["ask_price1"] - df_test["bid_price1"]).abs() / df_test[
+        "mid_price"
+    ]
+    df_test["spread_rolling"] = df_test["spread"].rolling(window_size).mean()
+    df_test["returns"] = df_test["mid_price"].pct_change(window_size)
+    df_test["realized_vol_10s"] = df_test["returns"].rolling(window_size).mean()
+    df_test["order_imbalance"] = (
+        order_book_imbalance(df_test).rolling(window_size).mean()
+    )
+    df_test["microprice"] = (
+        df_test["bid_price1"] * df_test["ask_volume1"]
+        + df_test["ask_price1"] * df_test["bid_volume1"]
+    ) / (df_test["bid_volume1"] + df_test["ask_volume1"])
+    df_test["microprice_rolling"] = df_test["microprice"].rolling(window_size).mean()
+
+    df_test.ffill(inplace=True)
+    df_test.bfill(inplace=True)
+
+    xscaler = sk.preprocessing.StandardScaler()
+    x_test = xscaler.fit_transform(df_test[features])
+
+    x_test = window_creation(df_test, feature=features, window_size=window_size)
+
+    ypred_scaled = model.predict(x_test)
+
+    ypred = yscaler.inverse_transform(ypred_scaled)
+
+    # Create a new DataFrame with only timestamp and label columns
+    submission_df = pd.DataFrame(
+        {
+            "timestamp": df_test["timestamp"].iloc[
+                window_size:
+            ],  # Skip the first window_size timestamps
+            "label": ypred.flatten(),  # Flatten the predictions to 1D array
+        }
+    )
+
+    # Save only the required columns to submission.csv
+    submission_df.to_csv("submission.csv", index=False)
 
 
 if __name__ == "__main__":

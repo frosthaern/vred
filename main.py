@@ -4,13 +4,13 @@ import sklearn as sk
 import tensorflow as tf
 
 def order_book_imbalance(df, levels=5, window=10):
-    bid_vol = sum(df[f"bid_vol{i}"] for i in range(1, levels + 1))
-    ask_vol = sum(df[f"ask_vol{i}"] for i in range(1, levels + 1))
+    bid_vol = sum(df[f"bid_volume{i}"] for i in range(1, levels + 1))
+    ask_vol = sum(df[f"ask_volume{i}"] for i in range(1, levels + 1))
     return (bid_vol - ask_vol) / (bid_vol + ask_vol).rolling(window).mean()
 
 
-def window_creation(df, features, window_size=10):
-    x = df[features].values
+def window_creation(df, feature, window_size=10):
+    x = df[feature].values
     x_values = []
 
     for i in range(window_size, len(x)):
@@ -31,8 +31,8 @@ def main():
     df["realized_vol_10s"] = df["returns"].rolling(10).std()
     df["order_imbalance"] = order_book_imbalance(df).rolling(10).mean()
     df["microprice"] = (
-        df["bid_price1"] * df["ask_vol1"] + df["ask_price1"] * df["bid_vol1"]
-    ) / (df["bid_vol1"] + df["ask_vol1"])
+        df["bid_price1"] * df["ask_volume1"] + df["ask_price1"] * df["bid_volume1"]
+    ) / (df["bid_volume1"] + df["ask_volume1"])
 
     features = ["spread", "realized_vol_10s", "order_imbalance", "microprice"]
     x = df[features]
@@ -42,7 +42,7 @@ def main():
 
     x = window_creation(df, feature=features, window_size=window_size)
 
-    x_lstm = x.reshape(x.shape[0], x.shape[1], 1)
+    x_lstm = x.reshape(x.shape[0], x.shape[1], x.shape[2])
     y_lstm = y[window_size:]
 
     xtrain, xtest, ytrain, ytest = sk.model_selection.train_test_split(

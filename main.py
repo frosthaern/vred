@@ -50,12 +50,8 @@ def main():
     xscaler = sk.preprocessing.StandardScaler()
     x = xscaler.fit_transform(df[features])
 
-    # Scale target variable
-    yscaler = sk.preprocessing.StandardScaler()
-    y_scaled = yscaler.fit_transform(y.values.reshape(-1, 1)).flatten()
-
     xtrain, xtest, ytrain, ytest = sk.model_selection.train_test_split(
-        x, y_scaled, test_size=0.2, random_state=42
+        x, y, test_size=0.2, random_state=42
     )
 
     print(xtrain.shape)
@@ -70,14 +66,10 @@ def main():
     model.compile(optimizer="adam", loss="mse")
     model.fit(xtrain, ytrain, epochs=10, batch_size=64)
 
-    ypred_scaled = model.predict(xtest)
+    ypred = model.predict(xtest)
 
-    # Inverse transform the predictions back to original scale
-    ypred = yscaler.inverse_transform(ypred_scaled)
-    ytest_original = yscaler.inverse_transform(ytest.reshape(-1, 1))
-
-    print(f"rmse = {np.sqrt(sk.metrics.mean_squared_error(ytest_original, ypred))}")
-    print(f"mae = {sk.metrics.mean_absolute_error(ytest_original, ypred)}")
+    print(f"rmse = {np.sqrt(sk.metrics.mean_squared_error(ytest, ypred))}")
+    print(f"mae = {sk.metrics.mean_absolute_error(ytest, ypred)}")
 
     df_test = pd.read_csv("test/ETH.csv")
     df_test["timestamp"] = pd.to_datetime(df_test["timestamp"])
@@ -103,26 +95,19 @@ def main():
     df_test.ffill(inplace=True)
     df_test.bfill(inplace=True)
 
-    xscaler = sk.preprocessing.StandardScaler()
-    x_test = xscaler.fit_transform(df_test[features])
+    x_test = xscaler.transform(df_test[features])
 
     x_test = window_creation(df_test, feature=features, window_size=window_size)
 
-    ypred_scaled = model.predict(x_test)
+    ypred = model.predict(x_test)
 
-    ypred = yscaler.inverse_transform(ypred_scaled)
-
-    # Create a new DataFrame with only timestamp and label columns
     submission_df = pd.DataFrame(
         {
-            "timestamp": df_test["timestamp"].iloc[
-                window_size:
-            ],  # Skip the first window_size timestamps
-            "label": ypred.flatten(),  # Flatten the predictions to 1D array
+            "timestamp": df_test["timestamp"],
+            "label": ypred.flatten(),
         }
     )
 
-    # Save only the required columns to submission.csv
     submission_df.to_csv("submission.csv", index=False)
 
 

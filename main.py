@@ -50,6 +50,9 @@ def main():
 
     ypred = model.predict(xtest)
 
+    print(f"rmse = {np.sqrt(sk.metrics.mean_squared_error(ytest, ypred))}")
+    print(f"mae = {sk.metrics.mean_absolute_error(ytest, ypred)}")
+
     print(ypred.shape)
     print(ytest.shape)
 

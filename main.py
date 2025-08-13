@@ -56,7 +56,7 @@ def main():
     model.add(tf.keras.layers.LSTM(50, input_shape=(xtrain.shape[1], 1)))
     model.add(tf.keras.layers.Dense(1))
     model.compile(optimizer="adam", loss="mse")
-    model.fit(xtrain, ytrain, epochs=10, batch_size=64)
+    model.fit(xtrain, ytrain, epochs=30, batch_size=64)
 
     ypred = model.predict(xtest)
 

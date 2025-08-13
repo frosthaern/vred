@@ -28,7 +28,7 @@ def main():
     # convert the features into a rolling window features, then you don't need to do that shape while training
     df["spread"] = ((df["ask_price1"] - df["bid_price1"]).abs() / df["mid_price"]).abs()
     df["spread_rolling"] = df["spread"].rolling(window_size).mean()
-    df["returns"] = df["mid_price"].pct_change()
+    df["returns"] = df["mid_price"].pct_change(window_size)
     df["realized_vol_10s"] = df["returns"].rolling(window_size).mean()
     df["order_imbalance"] = order_book_imbalance(df).rolling(window_size).mean()
     df["microprice"] = (
@@ -41,9 +41,9 @@ def main():
 
     features = [
         "spread_rolling",
-        "realized_vol_10s",
+        # "realized_vol_10s",
         "order_imbalance",
-        "microprice_rolling",
+        # "microprice_rolling",
     ]
 
     y = df["label"]
@@ -52,11 +52,11 @@ def main():
 
     x = window_creation(df, feature=features, window_size=window_size)
 
-    x_lstm = x.reshape(x.shape[0], x.shape[1], x.shape[2])
+    # x_lstm = x.reshape(x.shape[0], x.shape[1], x.shape[2])
     y_lstm = y[window_size:]
 
     xtrain, xtest, ytrain, ytest = sk.model_selection.train_test_split(
-        x_lstm, y_lstm, test_size=0.2, random_state=42
+        x, y_lstm, test_size=0.2, random_state=42
     )
 
     print(xtrain.shape)

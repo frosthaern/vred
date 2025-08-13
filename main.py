@@ -56,7 +56,7 @@ def main():
     model.add(tf.keras.layers.LSTM(50, input_shape=(xtrain.shape[1], 1)))
     model.add(tf.keras.layers.Dense(1))
     model.compile(optimizer="adam", loss="mse")
-    model.fit(xtrain, ytrain, epochs=30, batch_size=64)
+    model.fit(xtrain, ytrain, epochs=15, batch_size=64)
 
     ypred = model.predict(xtest)
 
@@ -93,12 +93,11 @@ def main():
 
     submission_df = pd.DataFrame(
         {
-            "timestamp": df_test["timestamp"],
             "label": ypred.flatten(),
         }
     )
 
-    submission_df.to_csv("submission.csv", index=False)
+    submission_df.to_csv("submission.csv")
 
 
 if __name__ == "__main__":

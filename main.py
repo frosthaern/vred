@@ -27,14 +27,14 @@ def main():
 
     # convert the features into a rolling window features, then you don't need to do that shape while training
     df["spread"] = ((df["ask_price1"] - df["bid_price1"]).abs() / df["mid_price"]).abs()
-    df["spread_rolling"] = df["spread"].rolling(window_size).std()
+    df["spread_rolling"] = df["spread"].rolling(window_size).mean()
     df["returns"] = df["mid_price"].pct_change()
-    df["realized_vol_10s"] = df["returns"].rolling(window_size).std()
-    df["order_imbalance"] = order_book_imbalance(df).rolling(window_size).std()
+    df["realized_vol_10s"] = df["returns"].rolling(window_size).mean()
+    df["order_imbalance"] = order_book_imbalance(df).rolling(window_size).mean()
     df["microprice"] = (
         df["bid_price1"] * df["ask_volume1"] + df["ask_price1"] * df["bid_volume1"]
     ) / (df["bid_volume1"] + df["ask_volume1"])
-    df["microprice_rolling"] = df["microprice"].rolling(window_size).std()
+    df["microprice_rolling"] = df["microprice"].rolling(window_size).mean()
 
     df.ffill(inplace=True)
     df.bfill(inplace=True)

@@ -26,7 +26,7 @@ def main():
     df.interpolate(method="linear", inplace=True)
 
     # convert the features into a rolling window features, then you don't need to do that shape while training
-    df["spread"] = ((df["ask_price1"] - df["bid_price1"]).abs() / df["mid_price"]).abs()
+    df["spread"] = (df["ask_price1"] - df["bid_price1"]).abs() / df["mid_price"]
     df["spread_rolling"] = df["spread"].rolling(window_size).mean()
     df["returns"] = df["mid_price"].pct_change(window_size)
     df["realized_vol_10s"] = df["returns"].rolling(window_size).mean()
@@ -47,13 +47,17 @@ def main():
     ]
 
     y = df["label"]
+
+    # Scale features
     xscaler = sk.preprocessing.StandardScaler()
     x = xscaler.fit_transform(df[features])
 
-    x = window_creation(df, feature=features, window_size=window_size)
+    # Scale target variable
+    yscaler = sk.preprocessing.StandardScaler()
+    y_scaled = yscaler.fit_transform(y.values.reshape(-1, 1)).flatten()
 
-    # x_lstm = x.reshape(x.shape[0], x.shape[1], x.shape[2])
-    y_lstm = y[window_size:]
+    x = window_creation(df, feature=features, window_size=window_size)
+    y_lstm = y_scaled[window_size:]
 
     xtrain, xtest, ytrain, ytest = sk.model_selection.train_test_split(
         x, y_lstm, test_size=0.2, random_state=42
@@ -71,10 +75,14 @@ def main():
     model.compile(optimizer="adam", loss="mse")
     model.fit(xtrain, ytrain, epochs=10, batch_size=64)
 
-    ypred = model.predict(xtest)
+    ypred_scaled = model.predict(xtest)
 
-    print(f"rmse = {np.sqrt(sk.metrics.mean_squared_error(ytest, ypred))}")
-    print(f"mae = {sk.metrics.mean_absolute_error(ytest, ypred)}")
+    # Inverse transform the predictions back to original scale
+    ypred = yscaler.inverse_transform(ypred_scaled)
+    ytest_original = yscaler.inverse_transform(ytest.reshape(-1, 1))
+
+    print(f"rmse = {np.sqrt(sk.metrics.mean_squared_error(ytest_original, ypred))}")
+    print(f"mae = {sk.metrics.mean_absolute_error(ytest_original, ypred)}")
 
     print(ypred.shape)
     print(ytest.shape)

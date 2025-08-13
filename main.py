@@ -9,14 +9,6 @@ def order_book_imbalance(df, levels=5, window=10):
     return (bid_vol - ask_vol) / (bid_vol + ask_vol).rolling(window).mean()
 
 
-def window_creation(df, feature, window_size=10):
-    x = df[feature].values
-    x_values = []
-
-    for i in range(window_size, len(x)):
-        x_values.append(x[i - window_size : i])
-    return np.array(x_values)
-
 def main():
     # just loading
     window_size = 10
@@ -96,8 +88,6 @@ def main():
     df_test.bfill(inplace=True)
 
     x_test = xscaler.transform(df_test[features])
-
-    x_test = window_creation(df_test, feature=features, window_size=window_size)
 
     ypred = model.predict(x_test)
 

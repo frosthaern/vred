@@ -93,9 +93,9 @@ def main():
 
     submission_df = pd.DataFrame(
         {
-            "label": ypred.flatten(),
+            "labels": ypred.flatten(),
         },
-        index=pd.RangeIndex(start=1, stop=len(ypred) + 1, name="index"),
+        index=pd.RangeIndex(start=1, stop=len(ypred) + 1, name="timestamp"),
     )
 
     submission_df.to_csv("submission.csv")

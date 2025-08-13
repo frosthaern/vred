@@ -56,7 +56,7 @@ def main():
     model.add(tf.keras.layers.LSTM(50, input_shape=(xtrain.shape[1], 1)))
     model.add(tf.keras.layers.Dense(1))
     model.compile(optimizer="adam", loss="mse")
-    model.fit(xtrain, ytrain, epochs=15, batch_size=64)
+    model.fit(xtrain, ytrain, epochs=7, batch_size=64)
 
     ypred = model.predict(xtest)
 
@@ -94,7 +94,8 @@ def main():
     submission_df = pd.DataFrame(
         {
             "label": ypred.flatten(),
-        }
+        },
+        index=pd.RangeIndex(start=1, stop=len(ypred) + 1, name="index"),
     )
 
     submission_df.to_csv("submission.csv")

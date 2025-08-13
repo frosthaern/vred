@@ -3,17 +3,22 @@ import numpy as np
 import sklearn as sk
 import tensorflow as tf
 
+def order_book_imbalance(df, levels=5, window=10):
+    bid_vol = sum(df[f"bid_vol{i}"] for i in range(1, levels + 1))
+    ask_vol = sum(df[f"ask_vol{i}"] for i in range(1, levels + 1))
+    return (bid_vol - ask_vol) / (bid_vol + ask_vol).rolling(window).mean()
 
-def window_creation(df, feature, window_size=10):
-    x = df[feature].values
+
+def window_creation(df, features, window_size=10):
+    x = df[features].values
     x_values = []
 
     for i in range(window_size, len(x)):
         x_values.append(x[i - window_size : i])
     return np.array(x_values)
 
-
 def main():
+    # just loading
     window_size = 10
     df = pd.read_csv("train/ETH.csv")
     df["timestamp"] = pd.to_datetime(df["timestamp"])
@@ -22,13 +27,20 @@ def main():
     print(f"total is nas = {df.isna().sum()}")
 
     df["spread"] = ((df["ask_price1"] - df["bid_price1"]).abs() / df["mid_price"]).abs()
+    df["returns"] = df["mid_price"].pct_change()
+    df["realized_vol_10s"] = df["returns"].rolling(10).std()
+    df["order_imbalance"] = order_book_imbalance(df).rolling(10).mean()
+    df["microprice"] = (
+        df["bid_price1"] * df["ask_vol1"] + df["ask_price1"] * df["bid_vol1"]
+    ) / (df["bid_vol1"] + df["ask_vol1"])
 
-    x = df[["spread"]]
+    features = ["spread", "realized_vol_10s", "order_imbalance", "microprice"]
+    x = df[features]
     y = df["label"]
     xscaler = sk.preprocessing.StandardScaler()
     x = xscaler.fit_transform(x)
 
-    x = window_creation(df, feature="spread", window_size=window_size)
+    x = window_creation(df, feature=features, window_size=window_size)
 
     x_lstm = x.reshape(x.shape[0], x.shape[1], 1)
     y_lstm = y[window_size:]
@@ -42,8 +54,9 @@ def main():
     print(ytrain.shape)
     print(ytest.shape)
 
+    # model training
     model = tf.keras.Sequential()
-    model.add(tf.keras.layers.LSTM(50, input_shape=(x.shape[1], 1)))
+    model.add(tf.keras.layers.LSTM(50, input_shape=(x.shape[1], x.shape[2])))
     model.add(tf.keras.layers.Dense(1))
     model.compile(optimizer="adam", loss="mse")
     model.fit(xtrain, ytrain, epochs=10, batch_size=64)
